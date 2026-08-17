@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Yugi Merguez Party</title>
+<title>Pool retro</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Yugi Merguez Party">
+<meta name="apple-mobile-web-app-title" content="Pool retro">
 <meta name="theme-color" content="#12100e">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,6 +84,12 @@
   .card .art{aspect-ratio:59/86;background:var(--panel-2);display:block;width:100%;object-fit:cover}
   .card .ph{aspect-ratio:59/86;display:flex;align-items:center;justify-content:center;padding:10px;
     text-align:center;font-family:Vollkorn,serif;font-size:13px;color:#1a1a1a}
+  .card{position:relative}
+  .ban{position:absolute;top:6px;left:6px;z-index:2;font-family:IBM Plex Mono,monospace;
+    font-size:11px;font-weight:500;line-height:1;padding:4px 6px;border-radius:2px;
+    background:#8f1f16;color:#ffe9e4;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+  .ban.l1{background:#a8641a;color:#fff3e2} .ban.l2{background:#4a4335;color:#efe6d2}
+  .ban.ex{background:#8a3520;color:#ffe4d8;box-shadow:0 0 0 1px #c9543a inset,0 1px 4px rgba(0,0,0,.5)}
   .card .meta{padding:8px 9px 10px}
   .card .nm{font-size:12.5px;font-weight:500;line-height:1.3;display:block}
   .card .sub{font-family:IBM Plex Mono,monospace;font-size:10.5px;color:var(--fg-faint);margin-top:4px}
@@ -135,7 +141,7 @@
 </head>
 <body>
 <header>
-  <h1>Yugi Merguez Party<small>Cartes Yu-Gi-Oh! TCG · ère GX et avant</small></h1>
+  <h1>Pool retro<small>Cartes Yu-Gi-Oh! TCG · ère GX et avant</small></h1>
   <div class="count" id="count">—<span id="countLabel">chargement</span></div>
 </header>
 
@@ -167,6 +173,12 @@
       <option>Monstre</option><option>Magie</option><option>Piège</option></select></div>
     <div><label for="fAttr">Attribut</label><select id="fAttr"><option value="">tous</option></select></div>
     <div><label for="fRace">Type</label><select id="fRace"><option value="">tous</option></select></div>
+    <div><label for="fMode">Banlist</label><select id="fMode">
+      <option value="house">maison — interdites à 1</option>
+      <option value="official">officielle sept. 2008</option></select></div>
+    <div><label for="fStat">Statut sept. 2008</label><select id="fStat"><option value="">tous</option>
+      <option value="0">interdites</option><option value="1">limitées</option>
+      <option value="2">semi-limitées</option><option value="free">sans restriction</option></select></div>
     <div><label for="fLvl">Niveau</label><select id="fLvl"><option value="">tous</option></select></div>
     <div><label for="fSort">Tri</label><select id="fSort">
       <option value="name">nom</option><option value="date">date de sortie</option>
@@ -199,7 +211,25 @@
 </dialog>
 
 <script>
-const BUILD = "4-mobile";
+const BUILD = "6-maison";
+// Liste Interdites & Limitées du TCG, 1er septembre 2008 (0 interdite, 1 limitée, 2 semi-limitée)
+const BAN = {};
+`Black Luster Soldier - Envoy of the Beginning|Chaos Emperor Dragon - Envoy of the End|Chaos Sorcerer|Cyber Jar|Cyber-Stein|Dark Magician of Chaos|Destiny HERO - Disk Commander|Fiber Jar|Magical Scientist|Magician of Faith|Makyura the Destructor|Sinister Serpent|Thousand-Eyes Restrict|Tribe-Infecting Virus|Tsukuyomi|Victory Dragon|Witch of the Black Forest|Yata-Garasu|Butterfly Dagger - Elma|Change of Heart|Confiscation|Dark Hole|Delinquent Duo|Dimension Fusion|Graceful Charity|Harpie's Feather Duster|Last Will|Metamorphosis|Mirage of Nightmare|Painful Choice|Pot of Greed|Premature Burial|Raigeki|Snatch Steal|The Forceful Sentry|Call of the Haunted|Exchange of the Spirit|Imperial Order|Last Turn|Ring of Destruction|Time Seal`
+  .split("|").forEach(n => BAN[n] = 0);
+`Breaker the Magical Warrior|Card Trooper|Cyber Dragon|D.D. Warrior Lady|Dandylion|Elemental HERO Stratos|Exodia the Forbidden One|Gorz the Emissary of Darkness|Green Baboon, Defender of the Forest|Left Arm of the Forbidden One|Left Leg of the Forbidden One|Marshmallon|Morphing Jar|Neo-Spacian Grand Mole|Night Assailant|Raiza the Storm Monarch|Right Arm of the Forbidden One|Right Leg of the Forbidden One|Sangan|Snipe Hunter|Spirit Reaper|Treeborn Frog|Twin-Headed Behemoth|Advanced Ritual Art|Brain Control|Card Destruction|Fissure|Future Fusion|Giant Trunade|Gold Sarcophagus|Heavy Storm|Level Limit - Area B|Limiter Removal|Megamorph|Monster Gate|Monster Reborn|Mystical Space Typhoon|Overload Fusion|Reasoning|Scapegoat|Smashing Ground|Swords of Revealing Light|United We Stand|Ceasefire|Crush Card Virus|Gravity Bind|Magic Cylinder|Mind Crush|Mirror Force|Ojama Trio|Return from the Different Dimension|The Transmigration Prophecy|Torrential Tribute|Trap Dustshoot|Ultimate Offering|Wall of Revealing Light`
+  .split("|").forEach(n => BAN[n] = 1);
+`Dark Armed Dragon|Judgment Dragon|Manticore of Darkness|Mask of Darkness|Necroface|Phantom of Chaos|Rescue Cat|Book of Moon|Card of Safe Return|Chain Strike|Foolish Burial|Magical Stone Excavation|Nobleman of Crossout`
+  .split("|").forEach(n => BAN[n] = 2);
+const STATUS = ["Interdite","Limitée","Semi-limitée"];
+let mode = localStorage.getItem("ban") || "house";   // "official" ou "house"
+const statusOf = c => BAN[c.name];                    // statut officiel de septembre 2008
+const maxOf = c => {                                  // exemplaires réellement autorisés
+  const st = BAN[c.name];
+  if(st === undefined) return 3;
+  if(st === 0) return mode === "house" ? 1 : 0;
+  return st;
+};
+
 const API = "https://db.ygoprodeck.com/api/v7";
 const HARD_END = "2008-12-31";
 const MILESTONES = [
@@ -344,10 +374,10 @@ function buildOptions(){
 }
 
 function wire(){
-  ["q","fClass","fAttr","fRace","fLvl","fSort"].forEach(id=>{
+  ["q","fClass","fAttr","fRace","fLvl","fStat","fSort"].forEach(id=>{
     $(id).oninput = apply; $(id).onchange = apply;
   });
-  $("reset").onclick = () => { ["q","fClass","fAttr","fRace","fLvl"].forEach(id=>$(id).value="");
+  $("reset").onclick = () => { ["q","fClass","fAttr","fRace","fLvl","fStat"].forEach(id=>$(id).value="");
     $("fSort").value="name"; apply(); };
   $("csv").onclick = exportCsv;
   $("sync").onclick = sync;
@@ -356,6 +386,10 @@ function wire(){
   tog.onclick = () => {
     const open = filters.classList.toggle("hide") === false;
     tog.setAttribute("aria-expanded", String(open));
+  };
+  $("fMode").value = mode;
+  $("fMode").onchange = () => {
+    mode = $("fMode").value; localStorage.setItem("ban", mode); apply();
   };
   $("fLang").onchange = () => {
     lang = $("fLang").value; localStorage.setItem("lang", lang);
@@ -368,10 +402,12 @@ function wire(){
 function apply(){
   const pool = CARDS.filter(c => { const d=dateOf(c); return d && d <= cutoff; });
   const q=$("q").value.trim().toLowerCase(), kl=$("fClass").value,
-    at=$("fAttr").value, ra=$("fRace").value, lv=$("fLvl").value, so=$("fSort").value;
+    at=$("fAttr").value, ra=$("fRace").value, lv=$("fLvl").value, so=$("fSort").value,
+    st=$("fStat").value;
   view = pool.filter(c =>
     (!kl || klass(c.type)===kl) && (!at || c.attribute===at) &&
     (!ra || c.race===ra) && (!lv || String(c.level)===lv) &&
+    (!st || (st==="free" ? statusOf(c)===undefined : String(statusOf(c))===st)) &&
     (!q || nameOf(c).toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
         || descOf(c).toLowerCase().includes(q)));
   const byName=(a,b)=>nameOf(a).localeCompare(nameOf(b),"fr");
@@ -392,7 +428,9 @@ function apply(){
     b.classList.toggle("in", b.dataset.d <= cutoff);
     b.classList.toggle("cut", b.dataset.d === cutoff);
   });
-  const active = ["fClass","fAttr","fRace","fLvl"].filter(id=>$(id).value).length;
+  const active = ["fClass","fAttr","fRace","fLvl","fStat"].filter(id=>$(id).value).length;
+  $("lockState").innerHTML += mode==="house"
+    ? ` · <span style="color:var(--effect)">format maison : interdites jouables à 1</span>` : "";
   $("toggleF").textContent = active ? `Filtres (${active})` : "Filtres";
   $("shown").textContent = `${view.length.toLocaleString("fr-FR")} carte(s) affichée(s)`;
   $("grid").innerHTML=""; rendered=0; $("msg").textContent = view.length?"":"Aucune carte ne correspond.";
@@ -406,7 +444,13 @@ function paint(){
     const f=frameOf(c.type), col=`var(${FRAME[f]})`, img=c.card_images?.[0]?.image_url_small||"";
     const stat = c.atk!=null ? `${c.atk}/${c.def??"?"} · niv ${c.level??"?"}` : tr(RACES,c.race);
     const nm = nameOf(c);
-    return `<button class="card" data-i="${rendered+i}">
+    const st = statusOf(c), mx = maxOf(c);
+    const ex = st===0 && mode==="house";
+    const badge = st===undefined ? "" :
+      `<span class="ban l${mx===0?0:mx} ${ex?"ex":""}" title="${ex
+        ? "Interdite en septembre 2008 — 1 exemplaire en format maison"
+        : STATUS[st]+" au 1er septembre 2008"}">${mx===0?"⊘":mx}</span>`;
+    return `<button class="card" data-i="${rendered+i}">${badge}
       <img class="art" loading="lazy" src="${img}" alt=""
         onerror="this.outerHTML='<div class=ph style=background:${col}>${nm.replace(/'/g,"&#39;")}</div>'">
       <span class="meta"><span class="nm">${nm}</span>
@@ -425,8 +469,15 @@ function detail(c){
     : `${klass(c.type)} ${tr(RACES,c.race)}`;
   const nm = nameOf(c), alt = nm !== c.name ? `<br>${c.name}` : "";
   const missing = lang==="fr" && !FR[c.id] ? " · pas de traduction disponible" : "";
+  const stx = statusOf(c);
+  const mx = maxOf(c);
+  const ban = stx===undefined ? "" :
+    `<br><b style="color:${mx===0?"#e07a6c":mx===1?"#d79a4e":"var(--fg-dim)"}">` +
+    (stx===0 && mode==="house"
+      ? "Interdite en septembre 2008 — 1 exemplaire en format maison"
+      : `${STATUS[stx]} — ${mx===0?"injouable":"maximum "+mx+" exemplaire"+(mx>1?"s":"")}`) + "</b>";
   $("dlgIn").innerHTML = `<img src="${img}" alt="" onerror="this.remove()">
-    <div><h3>${nm}</h3><div class="line">${stat}<br>sortie TCG ${dateOf(c)||"?"}${missing}${alt}</div>
+    <div><h3>${nm}</h3><div class="line">${stat}<br>sortie TCG ${dateOf(c)||"?"}${missing}${alt}${ban}</div>
     <div class="desc">${descOf(c).replace(/</g,"&lt;")}</div></div>`;
   const p=(c.card_sets||[]).filter(s=>(SETS[s.set_name]||"9999")<=cutoff)
     .sort((a,b)=>(SETS[a.set_name]||"").localeCompare(SETS[b.set_name]||""));
@@ -439,9 +490,11 @@ function detail(c){
 }
 
 function exportCsv(){
-  const rows=[["nom","nom_en","categorie","type","attribut","niveau","atk","def","sortie_tcg","texte"]];
+  const rows=[["nom","nom_en","categorie","type","attribut","niveau","atk","def","sortie_tcg",
+    "statut_sept_2008","max_exemplaires","texte"]];
   view.forEach(c=>rows.push([nameOf(c),c.name,klass(c.type),tr(RACES,c.race)||"",
     tr(ATTRS,c.attribute)||"",c.level??"",c.atk??"",c.def??"",dateOf(c),
+    statusOf(c)===undefined ? "" : STATUS[statusOf(c)], maxOf(c),
     descOf(c).replace(/\s+/g," ")]));
   const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const a=document.createElement("a");
@@ -462,7 +515,7 @@ function greet(){
 
 function share(){
   const url = location.href, b = $("share");
-  if(navigator.share){ navigator.share({title:"Yugi Merguez Party", url}).catch(()=>{}); return; }
+  if(navigator.share){ navigator.share({title:"Pool retro", url}).catch(()=>{}); return; }
   navigator.clipboard.writeText(url).then(()=>{
     b.textContent = "Lien copié";
     setTimeout(()=>b.textContent = "Partager le lien", 2000);

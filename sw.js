@@ -1,4 +1,4 @@
-const SHELL = "poolretro-shell-v6";
+const SHELL = "poolretro-shell-v7";
 const ART = "poolretro-art-v1";
 const FILES = ["./", "./index.html", "./manifest.json",
   "./apple-touch-icon.png", "./icon-192.png", "./icon-512.png"];

@@ -108,6 +108,34 @@
   .prints div{padding:2px 0}
   .close{margin:0 20px 18px;width:auto}
   .msg{padding:40px 0;text-align:center;color:var(--fg-dim)}
+  .tabs{display:flex;gap:2px;margin:18px 0 0;border-bottom:1px solid var(--line)}
+  .tab{width:auto;background:transparent;border:1px solid var(--line);border-bottom:0;
+    border-radius:var(--radius) var(--radius) 0 0;padding:10px 16px;cursor:pointer;
+    font-family:Vollkorn,serif;font-size:15px;color:var(--fg-dim);margin-bottom:-1px}
+  .tab.on{color:var(--fg);background:var(--panel);border-bottom:1px solid var(--panel)}
+  .tab span{font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--monster)}
+  .plus{position:absolute;top:6px;right:6px;z-index:2;width:26px;height:26px;padding:0;
+    border-radius:50%;border:1px solid #5b4a34;background:rgba(18,16,14,.82);color:var(--monster);
+    font-size:16px;line-height:1;cursor:pointer}
+  .plus:hover{background:var(--monster);color:#12100e}
+  .addrow{display:flex;align-items:center;gap:12px;padding:0 20px 18px;flex-wrap:wrap}
+  .addrow .qty{display:flex;align-items:center;gap:10px;font-family:IBM Plex Mono,monospace}
+  .addrow button{width:40px;height:40px;padding:0;font-size:20px;line-height:1;cursor:pointer}
+  .addrow .lim{font-size:13px;color:var(--fg-faint)}
+  .deckhead{display:flex;gap:8px;margin:18px 0 10px}
+  .deckhead select{flex:1} .deckhead .btn{width:auto;flex:0 0 auto}
+  .dstats{font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--fg-dim);
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:12px 14px;margin:12px 0 18px}
+  .dstats b{color:var(--fg);font-weight:500}
+  .dstats .bad{color:#e07a6c}
+  .dgroup{font-family:Vollkorn,serif;font-size:16px;margin:22px 0 8px;color:var(--fg)}
+  .drow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+  .drow .n{flex:1;min-width:0;font-size:14px}
+  .drow .n small{display:block;color:var(--fg-faint);font-family:IBM Plex Mono,monospace;font-size:11px}
+  .drow button{width:34px;height:34px;padding:0;font-size:17px;line-height:1;cursor:pointer;flex:0 0 auto}
+  .drow .c{font-family:IBM Plex Mono,monospace;width:26px;text-align:center;flex:0 0 auto}
+  .empty{padding:34px 0;text-align:center;color:var(--fg-faint)}
   .tools{position:sticky;top:0;z-index:5;background:var(--ink);display:flex;gap:8px;
     padding:10px 0;margin-top:4px}
   .tools input{flex:1;min-width:0}
@@ -146,6 +174,12 @@
 </header>
 
 <main>
+  <nav class="tabs">
+    <button class="tab on" data-v="cards">Cartes</button>
+    <button class="tab" data-v="deck">Deck <span id="tabCount"></span></button>
+  </nav>
+
+  <section id="viewCards">
   <div id="tip" style="display:none;margin:18px 0 0;padding:14px 16px;background:var(--panel);
     border:1px solid #5b4a34;border-radius:var(--radius);font-size:14px;display:none">
     <b style="font-weight:500">Première ouverture : garde le réseau le temps du chargement.</b>
@@ -202,16 +236,43 @@
   <div class="grid" id="grid"></div>
   <div class="msg" id="msg">Connexion à la base YGOPRODeck…</div>
   <div id="sentinel" style="height:1px"></div>
+  </section>
+
+  <section id="viewDeck" hidden>
+    <div class="deckhead">
+      <select id="deckSel" aria-label="Deck courant"></select>
+      <button class="btn" id="deckNew">Nouveau</button>
+    </div>
+    <input id="deckName" placeholder="Nom du deck" aria-label="Nom du deck">
+    <div class="dstats" id="deckStats"></div>
+    <div id="deckList"></div>
+    <div class="bar" style="margin-top:18px">
+      <span style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="deckExport">Exporter</button>
+        <button class="btn" id="deckImport">Importer</button>
+        <button class="btn" id="deckDel">Supprimer ce deck</button>
+      </span>
+    </div>
+  </section>
 </main>
+
+<dialog id="alert">
+  <div style="padding:20px">
+    <h3 style="font-family:Vollkorn,serif;font-size:19px;margin:0 0 8px">T'as pas le droit</h3>
+    <p id="alertM" style="margin:0;font-size:14.5px;color:var(--fg-dim)"></p>
+  </div>
+  <button class="btn close" onclick="document.getElementById('alert').close()">Compris</button>
+</dialog>
 
 <dialog id="dlg">
   <div class="d-in" id="dlgIn"></div>
+  <div class="addrow" id="dlgAdd"></div>
   <div class="prints" id="dlgPrints"></div>
   <button class="btn close" onclick="document.getElementById('dlg').close()">Fermer</button>
 </dialog>
 
 <script>
-const BUILD = "6-maison";
+const BUILD = "7-decks";
 // Liste Interdites & Limitées du TCG, 1er septembre 2008 (0 interdite, 1 limitée, 2 semi-limitée)
 const BAN = {};
 `Black Luster Soldier - Envoy of the Beginning|Chaos Emperor Dragon - Envoy of the End|Chaos Sorcerer|Cyber Jar|Cyber-Stein|Dark Magician of Chaos|Destiny HERO - Disk Commander|Fiber Jar|Magical Scientist|Magician of Faith|Makyura the Destructor|Sinister Serpent|Thousand-Eyes Restrict|Tribe-Infecting Virus|Tsukuyomi|Victory Dragon|Witch of the Black Forest|Yata-Garasu|Butterfly Dagger - Elma|Change of Heart|Confiscation|Dark Hole|Delinquent Duo|Dimension Fusion|Graceful Charity|Harpie's Feather Duster|Last Will|Metamorphosis|Mirage of Nightmare|Painful Choice|Pot of Greed|Premature Burial|Raigeki|Snatch Steal|The Forceful Sentry|Call of the Haunted|Exchange of the Spirit|Imperial Order|Last Turn|Ring of Destruction|Time Seal`
@@ -327,14 +388,16 @@ async function boot(){
   try{ cached = await idb.get("pool2"); }catch(e){}
   if(cached){
     install(cached.cards,cached.sets,cached.fr);
-    buildFrise(); buildOptions(); wire(); apply();
+    await loadDecks();
+    buildFrise(); buildOptions(); wire(); wireDeck(); apply();
     $("msg").textContent = "";
     return;
   }
   try{
     const d = await download();
     install(d.cards,d.sets,d.fr);
-    buildFrise(); buildOptions(); wire(); apply();
+    await loadDecks();
+    buildFrise(); buildOptions(); wire(); wireDeck(); apply();
   }catch(e){
     $("msg").innerHTML = "Impossible de joindre la base YGOPRODeck. Reconnecte-toi et recharge : "
       + "les cartes sont téléchargées une seule fois, ensuite l'app fonctionne hors ligne.";
@@ -389,7 +452,7 @@ function wire(){
   };
   $("fMode").value = mode;
   $("fMode").onchange = () => {
-    mode = $("fMode").value; localStorage.setItem("ban", mode); apply();
+    mode = $("fMode").value; localStorage.setItem("ban", mode); apply(); renderDeck();
   };
   $("fLang").onchange = () => {
     lang = $("fLang").value; localStorage.setItem("lang", lang);
@@ -451,6 +514,7 @@ function paint(){
         ? "Interdite en septembre 2008 — 1 exemplaire en format maison"
         : STATUS[st]+" au 1er septembre 2008"}">${mx===0?"⊘":mx}</span>`;
     return `<button class="card" data-i="${rendered+i}">${badge}
+      <span class="plus" role="button" data-add="${c.name.replace(/"/g,"&quot;")}" title="Ajouter au deck">+</span>
       <img class="art" loading="lazy" src="${img}" alt=""
         onerror="this.outerHTML='<div class=ph style=background:${col}>${nm.replace(/'/g,"&#39;")}</div>'">
       <span class="meta"><span class="nm">${nm}</span>
@@ -459,6 +523,8 @@ function paint(){
   rendered += slice.length;
   $("grid").querySelectorAll(".card:not([data-w])").forEach(b=>{
     b.dataset.w=1; b.onclick=()=>detail(view[+b.dataset.i]);
+    const p=b.querySelector(".plus");
+    if(p) p.onclick=e=>{ e.stopPropagation(); addCard(p.dataset.add, 1); };
   });
 }
 
@@ -484,6 +550,7 @@ function detail(c){
   $("dlgPrints").innerHTML = p.length
     ? "éditions d'époque<br>" + p.map(s=>`<div>${s.set_code} · ${s.set_name} · ${s.set_rarity}</div>`).join("")
     : "aucune édition d'époque référencée";
+  addRow(c);
   const dlg = $("dlg");
   dlg.onclick = e => { if(e.target === dlg) dlg.close(); };
   dlg.showModal();
@@ -520,6 +587,152 @@ function share(){
     b.textContent = "Lien copié";
     setTimeout(()=>b.textContent = "Partager le lien", 2000);
   }).catch(()=>{ b.textContent = url; });
+}
+
+// ============ decks ============
+let DECKS = [], curId = null, BYNAME = {}, saveT = null;
+
+const deck = () => DECKS.find(d => d.id === curId);
+const total = d => Object.values(d.cards).reduce((a,b)=>a+b,0);
+
+async function loadDecks(){
+  try{ DECKS = (await idb.get("decks")) || []; }catch(e){ DECKS = []; }
+  if(!DECKS.length) DECKS = [{id:Date.now(), name:"Mon deck", cards:{}}];
+  curId = DECKS[0].id;
+}
+function persist(){
+  clearTimeout(saveT);
+  saveT = setTimeout(()=>{ idb.set("decks", DECKS).catch(()=>{}); }, 400);
+}
+function nope(msg){ $("alertM").textContent = msg; $("alert").showModal(); }
+
+function addCard(name, delta){
+  const d = deck(); if(!d) return;
+  const c = BYNAME[name];
+  const have = d.cards[name] || 0;
+  if(delta > 0){
+    if(!c) return nope(`${name} est introuvable dans la base.`);
+    if((dateOf(c) || "9999") > cutoff)
+      return nope(`${nameOf(c)} sort après ${cutoff}, elle est hors du pool verrouillé.`);
+    const mx = maxOf(c);
+    if(mx === 0)
+      return nope(`${nameOf(c)} est interdite par la liste de septembre 2008. Passe en format maison si vous l'autorisez.`);
+    if(have + delta > mx){
+      const st = statusOf(c);
+      const why = st === undefined
+        ? `Le règlement autorise 3 exemplaires maximum par carte.`
+        : st === 0 && mode === "house"
+          ? `${nameOf(c)} est interdite en septembre 2008 : votre format maison ne l'autorise qu'à 1 exemplaire.`
+          : `${nameOf(c)} est ${STATUS[st].toLowerCase()} : ${mx} exemplaire${mx>1?"s":""} maximum.`;
+      return nope(`${why} Tu en as déjà ${have}.`);
+    }
+    if(total(d) + delta > 60)
+      return nope(`Un deck principal ne peut pas dépasser 60 cartes. Tu en as ${total(d)}.`);
+  }
+  const n = have + delta;
+  if(n <= 0) delete d.cards[name]; else d.cards[name] = n;
+  persist(); renderDeck(); tabCount();
+  if($("dlg").open && BYNAME[name]) addRow(BYNAME[name]);
+}
+
+function tabCount(){
+  const d = deck();
+  $("tabCount").textContent = d && total(d) ? `(${total(d)})` : "";
+}
+
+function addRow(c){
+  const d = deck(); if(!d){ $("dlgAdd").innerHTML=""; return; }
+  const have = d.cards[c.name] || 0, mx = maxOf(c);
+  $("dlgAdd").innerHTML = `
+    <span class="qty">
+      <button class="btn" data-a="-1" ${have?"":"disabled"}>−</button>
+      <b>${have}</b>
+      <button class="btn" data-a="1">+</button>
+    </span>
+    <span class="lim">dans « ${d.name} » · ${mx===0?"interdite":"max "+mx}</span>`;
+  $("dlgAdd").querySelectorAll("button[data-a]").forEach(b =>
+    b.onclick = () => addCard(c.name, +b.dataset.a));
+}
+
+function renderDeck(){
+  const d = deck();
+  $("deckName").value = d ? d.name : "";
+  $("deckSel").innerHTML = DECKS.map(x =>
+    `<option value="${x.id}" ${x.id===curId?"selected":""}>${x.name} — ${total(x)}</option>`).join("");
+  if(!d) return;
+
+  const names = Object.keys(d.cards);
+  const groups = {Monstre:[], Magie:[], Piège:[]};
+  let unknown = 0;
+  names.forEach(n => {
+    const c = BYNAME[n];
+    if(!c){ unknown++; return; }
+    groups[klass(c.type)].push(c);
+  });
+  const t = total(d);
+  const over = names.filter(n => BYNAME[n] && d.cards[n] > maxOf(BYNAME[n]));
+  $("deckStats").innerHTML =
+    `<b>${t}</b> cartes · ${groups.Monstre.reduce((a,c)=>a+d.cards[c.name],0)} monstres · ` +
+    `${groups.Magie.reduce((a,c)=>a+d.cards[c.name],0)} magies · ` +
+    `${groups["Piège"].reduce((a,c)=>a+d.cards[c.name],0)} pièges` +
+    (t < 40 ? `<br><span class="bad">Il manque ${40-t} cartes pour atteindre le minimum de 40.</span>` : "") +
+    (over.length ? `<br><span class="bad">${over.length} carte(s) au-dessus de la limite après changement de banlist.</span>` : "") +
+    (t >= 40 && !over.length ? `<br>Deck légal pour ce pool et cette liste.` : "") +
+    (unknown ? `<br><span class="bad">${unknown} carte(s) inconnue(s) de la base.</span>` : "");
+
+  $("deckList").innerHTML = !t ? `<div class="empty">Deck vide. Va dans l'onglet Cartes et appuie sur le + d'une vignette.</div>`
+    : Object.entries(groups).filter(([,v])=>v.length).map(([g,v]) => `<div class="dgroup">${g}s</div>` +
+        v.sort((a,b)=>nameOf(a).localeCompare(nameOf(b),"fr")).map(c => {
+          const mx = maxOf(c), q = d.cards[c.name];
+          return `<div class="drow">
+            <span class="n">${nameOf(c)}<small>${tr(RACES,c.race)} · ${mx===0?"interdite":"max "+mx}</small></span>
+            <button class="btn" data-n="${c.name}" data-a="-1">−</button>
+            <span class="c ${q>mx?"bad":""}" style="${q>mx?"color:#e07a6c":""}">${q}</span>
+            <button class="btn" data-n="${c.name}" data-a="1">+</button>
+          </div>`;
+        }).join("")).join("");
+  $("deckList").querySelectorAll("button[data-n]").forEach(b =>
+    b.onclick = () => addCard(b.dataset.n, +b.dataset.a));
+}
+
+function wireDeck(){
+  BYNAME = {}; CARDS.forEach(c => BYNAME[c.name] = c);
+  $("deckSel").onchange = () => { curId = +$("deckSel").value; renderDeck(); tabCount(); };
+  $("deckName").oninput = () => { const d = deck(); if(d){ d.name = $("deckName").value || "Sans nom";
+    persist(); $("deckSel").options[[...DECKS].findIndex(x=>x.id===curId)].textContent = `${d.name} — ${total(d)}`; } };
+  $("deckNew").onclick = () => {
+    const d = {id:Date.now(), name:`Deck ${DECKS.length+1}`, cards:{}};
+    DECKS.push(d); curId = d.id; persist(); renderDeck(); tabCount();
+  };
+  $("deckDel").onclick = () => {
+    if(DECKS.length < 2) return nope("C'est ton seul deck, tu ne peux pas le supprimer. Vide-le ou renomme-le.");
+    DECKS = DECKS.filter(x => x.id !== curId); curId = DECKS[0].id;
+    persist(); renderDeck(); tabCount();
+  };
+  $("deckExport").onclick = () => {
+    const d = deck(); if(!d) return;
+    const code = btoa(unescape(encodeURIComponent(JSON.stringify({n:d.name, c:d.cards}))));
+    if(navigator.share) navigator.share({title:d.name, text:code}).catch(()=>{});
+    else navigator.clipboard.writeText(code)
+      .then(()=>nope("Code du deck copié. Colle-le à un pote, il l'importera avec le bouton Importer."))
+      .catch(()=>nope(code));
+  };
+  $("deckImport").onclick = () => {
+    const code = prompt("Colle ici le code reçu :");
+    if(!code) return;
+    try{
+      const o = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+      const d = {id:Date.now(), name:(o.n||"Deck importé")+" (importé)", cards:o.c||{}};
+      DECKS.push(d); curId = d.id; persist(); renderDeck(); tabCount();
+    }catch(e){ nope("Ce code est illisible. Il a peut-être été coupé au copier-coller."); }
+  };
+  document.querySelectorAll(".tab").forEach(b => b.onclick = () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === b));
+    const deckView = b.dataset.v === "deck";
+    $("viewDeck").hidden = !deckView; $("viewCards").hidden = deckView;
+    if(deckView) renderDeck();
+  });
+  renderDeck(); tabCount();
 }
 
 $("share").onclick = share;

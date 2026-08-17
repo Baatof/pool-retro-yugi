@@ -1,6 +1,6 @@
 {
-  "name": "Pool retro — cartes Yu-Gi-Oh! jusqu'en 2008",
-  "short_name": "Pool retro",
+  "name": "Yugi - Merguez Party — cartes Yu-Gi-Oh! jusqu'en 2008",
+  "short_name": "Yugi - Merguez Party",
   "description": "Navigateur de cartes Yu-Gi-Oh! avec verrouillage de date, pour formats retro.",
   "start_url": "./index.html",
   "scope": "./",

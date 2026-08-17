@@ -1,4 +1,4 @@
-const SHELL = "poolretro-shell-v1";
+const SHELL = "poolretro-shell-v3";
 const ART = "poolretro-art-v1";
 const FILES = ["./", "./index.html", "./manifest.json",
   "./apple-touch-icon.png", "./icon-192.png", "./icon-512.png"];
@@ -32,11 +32,17 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  if (url.origin === self.location.origin) {
-    e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
-      const copy = res.clone();
-      caches.open(SHELL).then(c => c.put(e.request, copy));
+  if (url.origin !== self.location.origin) return;
+
+  e.respondWith((async () => {
+    try {
+      const res = await fetch(e.request, { cache: "no-store" });
+      const cache = await caches.open(SHELL);
+      cache.put(e.request, res.clone());
       return res;
-    }).catch(() => caches.match("./index.html"))));
-  }
+    } catch (err) {
+      const hit = await caches.match(e.request);
+      return hit || caches.match("./index.html");
+    }
+  })());
 });

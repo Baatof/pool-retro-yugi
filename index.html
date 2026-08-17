@@ -146,6 +146,7 @@
 
   <div class="bar">
     <span class="note" id="shown"></span>
+    <span class="note" id="build" style="font-family:IBM Plex Mono,monospace"></span>
     <span style="display:flex;gap:10px">
       <button class="btn" id="reset">Réinitialiser</button>
       <button class="btn" id="sync">Mettre à jour</button>
@@ -166,6 +167,7 @@
 </dialog>
 
 <script>
+const BUILD = "3-fr";
 const API = "https://db.ygoprodeck.com/api/v7";
 const HARD_END = "2008-12-31";
 const MILESTONES = [
@@ -251,7 +253,14 @@ async function download(){
 }
 
 async function boot(){
-  if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{});
+    let reloaded=false;
+    navigator.serviceWorker.addEventListener("controllerchange",()=>{
+      if(!reloaded){ reloaded=true; location.reload(); }
+    });
+  }
+  $("build").textContent = "version " + BUILD;
   let cached = null;
   try{ cached = await idb.get("pool2"); }catch(e){}
   if(cached){

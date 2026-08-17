@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pool retro</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pool retro">
+<meta name="theme-color" content="#12100e">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vollkorn:wght@500;600&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12100e; --panel:#1b1815; --panel-2:#241f1a; --line:#3a332b;
+    --fg:#ece5d6; --fg-dim:#a89c88; --fg-faint:#6f6555;
+    --monster:#c9a063; --effect:#d08a3c; --spell:#2f8f74; --trap:#a63b74;
+    --ritual:#4a7fbe; --fusion:#8a63b8; --synchro:#e6e0d4; --xyz:#2a2a2a;
+    --radius:3px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--ink);color:var(--fg);
+    font-family:Archivo,system-ui,sans-serif;font-size:15px;line-height:1.5;
+    -webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+  button,.card{-webkit-tap-highlight-color:transparent}
+  header{padding-top:calc(28px + env(safe-area-inset-top))}
+  main{padding-left:calc(22px + env(safe-area-inset-left));
+    padding-right:calc(22px + env(safe-area-inset-right));
+    padding-bottom:calc(60px + env(safe-area-inset-bottom))}
+  input,select{font-size:16px}
+  a{color:var(--monster)}
+  h1{font-family:Vollkorn,Georgia,serif;font-weight:600;font-size:26px;letter-spacing:.02em;margin:0}
+  h1 small{display:block;font-family:Archivo,sans-serif;font-size:13px;font-weight:400;
+    color:var(--fg-dim);letter-spacing:.06em;text-transform:uppercase;margin-top:6px}
+  header{padding:28px 22px 18px;border-bottom:1px solid var(--line);
+    display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between}
+  .count{font-family:Vollkorn,serif;font-size:34px;line-height:1;color:var(--monster)}
+  .count span{font-family:Archivo,sans-serif;font-size:12px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--fg-dim);display:block;margin-top:6px}
+  main{max-width:1180px;margin:0 auto;padding:0 22px 60px}
+
+  /* signature : la frise des sets */
+  .lock{padding:22px 0 8px}
+  .lock-head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:baseline;margin-bottom:14px}
+  .lock-head h2{font-family:Vollkorn,serif;font-size:17px;font-weight:500;margin:0}
+  .lock-head p{margin:0;font-size:13px;color:var(--fg-dim)}
+  .frise{display:flex;gap:2px;align-items:flex-end;overflow-x:auto;padding-bottom:10px}
+  .frise{-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+  .set{flex:0 0 auto;width:44px;border:0;padding:0;background:transparent;cursor:pointer;
+    font:inherit;color:inherit;text-align:center;scroll-snap-align:center}
+  .set b{display:block;height:52px;background:var(--panel-2);border:1px solid var(--line);
+    border-bottom:2px solid var(--line);border-radius:var(--radius) var(--radius) 0 0;
+    transition:background .12s,border-color .12s}
+  .set.in b{background:#3d3327;border-color:#5b4a34;border-bottom-color:var(--monster)}
+  .set.cut b{background:var(--monster);border-color:var(--monster);height:62px}
+  .set:hover b{border-color:var(--monster)}
+  .set:focus-visible{outline:2px solid var(--monster);outline-offset:2px}
+  .set em{display:block;font-family:IBM Plex Mono,monospace;font-style:normal;font-size:10px;
+    color:var(--fg-faint);margin-top:5px;letter-spacing:.02em}
+  .set.in em{color:var(--fg-dim)} .set.cut em{color:var(--monster)}
+  .lock-state{font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--fg-dim);margin-top:4px}
+  .lock-state b{color:var(--fg);font-weight:500}
+
+  .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;
+    padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin:18px 0}
+  label{display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--fg-faint);margin-bottom:5px}
+  input,select,button{font-family:inherit;font-size:14px;color:var(--fg);background:var(--panel-2);
+    border:1px solid var(--line);border-radius:var(--radius);padding:8px 10px;width:100%}
+  input:focus,select:focus,button:focus-visible{outline:none;border-color:var(--monster)}
+  .btn{cursor:pointer;background:transparent;border-color:#5b4a34}
+  .btn:hover{background:var(--panel-2)}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin:6px 0 18px}
+  .bar .btn{width:auto}
+  .note{font-size:13px;color:var(--fg-faint)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:0;cursor:pointer;text-align:left;overflow:hidden;color:inherit;font:inherit}
+  .card:hover,.card:focus-visible{border-color:var(--monster);outline:none}
+  .card .art{aspect-ratio:59/86;background:var(--panel-2);display:block;width:100%;object-fit:cover}
+  .card .ph{aspect-ratio:59/86;display:flex;align-items:center;justify-content:center;padding:10px;
+    text-align:center;font-family:Vollkorn,serif;font-size:13px;color:#1a1a1a}
+  .card .meta{padding:8px 9px 10px}
+  .card .nm{font-size:12.5px;font-weight:500;line-height:1.3;display:block}
+  .card .sub{font-family:IBM Plex Mono,monospace;font-size:10.5px;color:var(--fg-faint);margin-top:4px}
+  .swatch{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:1px}
+
+  dialog{max-width:640px;width:calc(100% - 32px);background:var(--panel);color:var(--fg);
+    border:1px solid #5b4a34;border-radius:var(--radius);padding:0}
+  dialog::backdrop{background:rgba(8,7,6,.82)}
+  .d-in{display:flex;gap:18px;padding:20px}
+  .d-in img{width:170px;flex:0 0 auto;border-radius:var(--radius);background:var(--panel-2)}
+  .d-in h3{font-family:Vollkorn,serif;font-size:20px;font-weight:600;margin:0 0 4px}
+  .d-in .line{font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--fg-dim);margin-bottom:12px}
+  .d-in .desc{font-size:14px;white-space:pre-wrap;border-top:1px solid var(--line);padding-top:12px}
+  .prints{font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--fg-dim);
+    border-top:1px solid var(--line);padding:12px 20px 18px}
+  .prints div{padding:2px 0}
+  .close{margin:0 20px 18px;width:auto}
+  .msg{padding:40px 0;text-align:center;color:var(--fg-dim)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Pool retro<small>Cartes Yu-Gi-Oh! TCG · ère GX et avant</small></h1>
+  <div class="count" id="count">—<span id="countLabel">chargement</span></div>
+</header>
+
+<main>
+  <div id="tip" style="display:none;margin:18px 0 0;padding:14px 16px;background:var(--panel);
+    border:1px solid #5b4a34;border-radius:var(--radius);font-size:14px;display:none">
+    <b style="font-weight:500">Première ouverture : garde le réseau le temps du chargement.</b>
+    Les cartes sont enregistrées sur ton téléphone, ensuite tout marche hors ligne.
+    <span id="tipHow" style="display:block;color:var(--fg-dim);margin-top:6px"></span>
+    <button class="btn" id="tipX" style="width:auto;margin-top:10px">Compris</button>
+  </div>
+
+  <section class="lock">
+    <div class="lock-head">
+      <h2>Verrouiller la date</h2>
+      <p>Clique un booster : tout ce qui sort après disparaît du pool.</p>
+    </div>
+    <div class="frise" id="frise"></div>
+    <div class="lock-state" id="lockState"></div>
+  </section>
+
+  <div class="filters">
+    <div><label for="q">Recherche</label><input id="q" type="search" placeholder="nom ou texte"></div>
+    <div><label for="fClass">Catégorie</label><select id="fClass"><option value="">toutes</option>
+      <option>Monstre</option><option>Magie</option><option>Piège</option></select></div>
+    <div><label for="fAttr">Attribut</label><select id="fAttr"><option value="">tous</option></select></div>
+    <div><label for="fRace">Type</label><select id="fRace"><option value="">tous</option></select></div>
+    <div><label for="fLvl">Niveau</label><select id="fLvl"><option value="">tous</option></select></div>
+    <div><label for="fSort">Tri</label><select id="fSort">
+      <option value="name">nom</option><option value="date">date de sortie</option>
+      <option value="atk">ATK décroissant</option><option value="def">DEF décroissant</option>
+      <option value="lvl">niveau</option></select></div>
+  </div>
+
+  <div class="bar">
+    <span class="note" id="shown"></span>
+    <span style="display:flex;gap:10px">
+      <button class="btn" id="reset">Réinitialiser</button>
+      <button class="btn" id="sync">Mettre à jour</button>
+      <button class="btn" id="share">Partager le lien</button>
+      <button class="btn" id="csv">Exporter en CSV</button>
+    </span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="msg" id="msg">Connexion à la base YGOPRODeck…</div>
+  <div id="sentinel" style="height:1px"></div>
+</main>
+
+<dialog id="dlg">
+  <div class="d-in" id="dlgIn"></div>
+  <div class="prints" id="dlgPrints"></div>
+  <button class="btn close" onclick="document.getElementById('dlg').close()">Fermer</button>
+</dialog>
+
+<script>
+const API = "https://db.ygoprodeck.com/api/v7";
+const HARD_END = "2008-12-31";
+const MILESTONES = [
+  ["LOB","Legend of Blue Eyes White Dragon"],["MRD","Metal Raiders"],["SRL","Spell Ruler"],
+  ["PSV","Pharaoh's Servant"],["LON","Labyrinth of Nightmare"],["LOD","Legacy of Darkness"],
+  ["PGD","Pharaonic Guardian"],["MFC","Magician's Force"],["DCR","Dark Crisis"],
+  ["IOC","Invasion of Chaos"],["AST","Ancient Sanctuary"],["SOD","Soul of the Duelist"],
+  ["RDS","Rise of Destiny"],["FET","Flaming Eternity"],["TLM","The Lost Millennium"],
+  ["CRV","Cybernetic Revolution"],["EEN","Elemental Energy"],["SOI","Shadow of Infinity"],
+  ["EOJ","Enemy of Justice"],["POTD","Power of the Duelist"],["CDIP","Cyberdark Impact"],
+  ["STON","Strike of Neos"],["FOTB","Force of the Breaker"],["TAEV","Tactical Evolution"],
+  ["GLAS","Gladiator's Assault"],["PTDN","Phantom Darkness"],["LODT","Light of Destruction"],
+  ["TDGS","The Duelist Genesis"]
+];
+const FRAME = {Spell:"--spell",Trap:"--trap",Ritual:"--ritual",Fusion:"--fusion",
+  Synchro:"--synchro",Effect:"--effect",Normal:"--monster"};
+
+let CARDS=[], SETS={}, MS=[], cutoff="2008-05-13", view=[], rendered=0;
+const $ = id => document.getElementById(id);
+const frameOf = t => t.includes("Spell")?"Spell":t.includes("Trap")?"Trap":
+  t.includes("Ritual")?"Ritual":t.includes("Fusion")?"Fusion":t.includes("Synchro")?"Synchro":
+  t.includes("Normal")?"Normal":"Effect";
+const klass = t => t.includes("Spell")?"Magie":t.includes("Trap")?"Piège":"Monstre";
+const dateOf = c => (c.misc_info&&c.misc_info[0]&&c.misc_info[0].tcg_date)||"";
+
+const idb = {
+  open:()=>new Promise((ok,no)=>{ const r=indexedDB.open("poolretro",1);
+    r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>ok(r.result); r.onerror=()=>no(r.error); }),
+  async get(k){ const db=await idb.open(); return new Promise(ok=>{
+    const q=db.transaction("kv").objectStore("kv").get(k); q.onsuccess=()=>ok(q.result); q.onerror=()=>ok(null); }); },
+  async set(k,v){ const db=await idb.open(); return new Promise(ok=>{
+    const t=db.transaction("kv","readwrite"); t.objectStore("kv").put(v,k); t.oncomplete=()=>ok(); t.onerror=()=>ok(); }); }
+};
+
+function install(cards,sets){
+  CARDS = cards; SETS = {};
+  sets.forEach(s => SETS[s.set_name] = s.tcg_date || "");
+  MS = MILESTONES.map(([code,name]) => ({code,name,date:SETS[name]||""})).filter(m=>m.date);
+}
+
+async function download(){
+  const [ci,cs] = await Promise.all([
+    fetch(`${API}/cardinfo.php?startdate=1999-01-01&enddate=${HARD_END}&dateregion=tcg&misc=yes`).then(r=>r.json()),
+    fetch(`${API}/cardsets.php`).then(r=>r.json())
+  ]);
+  const slim = ci.data.map(c=>({name:c.name,type:c.type,race:c.race,attribute:c.attribute,
+    level:c.level,atk:c.atk,def:c.def,desc:c.desc,card_sets:c.card_sets,
+    card_images:[{image_url:c.card_images?.[0]?.image_url,image_url_small:c.card_images?.[0]?.image_url_small}],
+    misc_info:[{tcg_date:c.misc_info?.[0]?.tcg_date}]}));
+  const sets = cs.map(s=>({set_name:s.set_name,tcg_date:s.tcg_date}));
+  await idb.set("pool",{cards:slim,sets,saved:new Date().toISOString().slice(0,10)});
+  return {cards:slim,sets};
+}
+
+async function boot(){
+  if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+  let cached = null;
+  try{ cached = await idb.get("pool"); }catch(e){}
+  if(cached){
+    install(cached.cards,cached.sets);
+    buildFrise(); buildOptions(); wire(); apply();
+    $("msg").textContent = "";
+    return;
+  }
+  try{
+    const d = await download();
+    install(d.cards,d.sets);
+    buildFrise(); buildOptions(); wire(); apply();
+  }catch(e){
+    $("msg").innerHTML = "Impossible de joindre la base YGOPRODeck. Reconnecte-toi et recharge : "
+      + "les cartes sont téléchargées une seule fois, ensuite l'app fonctionne hors ligne.";
+    $("countLabel").textContent = "hors ligne";
+  }
+}
+
+async function sync(){
+  const b=$("sync"); b.textContent="Mise à jour…"; b.disabled=true;
+  try{ const d=await download(); install(d.cards,d.sets); buildFrise(); apply(); b.textContent="À jour"; }
+  catch(e){ b.textContent="Échec — hors ligne"; }
+  setTimeout(()=>{ b.textContent="Mettre à jour"; b.disabled=false; },2500);
+}
+
+function buildFrise(){
+  $("frise").innerHTML = MS.map(m =>
+    `<button class="set" data-d="${m.date}" data-c="${m.code}" title="${m.name} — ${m.date}">
+      <b></b><em>${m.code}</em></button>`).join("");
+  $("frise").querySelectorAll(".set").forEach(b =>
+    b.onclick = () => { cutoff = b.dataset.d; apply(); });
+}
+
+function buildOptions(){
+  const attrs=new Set(), races=new Set(), lvls=new Set();
+  CARDS.forEach(c=>{ if(c.attribute)attrs.add(c.attribute);
+    if(c.race)races.add(c.race); if(c.level!=null)lvls.add(c.level); });
+  const fill=(el,vals)=>[...vals].sort((a,b)=>String(a).localeCompare(String(b),"fr",{numeric:1}))
+    .forEach(v=>el.insertAdjacentHTML("beforeend",`<option>${v}</option>`));
+  fill($("fAttr"),attrs); fill($("fRace"),races); fill($("fLvl"),lvls);
+}
+
+function wire(){
+  ["q","fClass","fAttr","fRace","fLvl","fSort"].forEach(id=>{
+    $(id).oninput = apply; $(id).onchange = apply;
+  });
+  $("reset").onclick = () => { ["q","fClass","fAttr","fRace","fLvl"].forEach(id=>$(id).value="");
+    $("fSort").value="name"; apply(); };
+  $("csv").onclick = exportCsv;
+  $("sync").onclick = sync;
+  new IntersectionObserver(es=>{ if(es[0].isIntersecting) paint(); })
+    .observe($("sentinel"));
+}
+
+function apply(){
+  const pool = CARDS.filter(c => { const d=dateOf(c); return d && d <= cutoff; });
+  const q=$("q").value.trim().toLowerCase(), kl=$("fClass").value,
+    at=$("fAttr").value, ra=$("fRace").value, lv=$("fLvl").value, so=$("fSort").value;
+  view = pool.filter(c =>
+    (!kl || klass(c.type)===kl) && (!at || c.attribute===at) &&
+    (!ra || c.race===ra) && (!lv || String(c.level)===lv) &&
+    (!q || c.name.toLowerCase().includes(q) || (c.desc||"").toLowerCase().includes(q)));
+  const cmp = {
+    name:(a,b)=>a.name.localeCompare(b.name,"fr"),
+    date:(a,b)=>dateOf(a).localeCompare(dateOf(b)) || a.name.localeCompare(b.name),
+    atk:(a,b)=>(b.atk??-1)-(a.atk??-1), def:(a,b)=>(b.def??-1)-(a.def??-1),
+    lvl:(a,b)=>(a.level??99)-(b.level??99) || a.name.localeCompare(b.name)};
+  view.sort(cmp[so]);
+
+  const ms = MS.find(m=>m.date===cutoff);
+  $("count").firstChild.textContent = pool.length.toLocaleString("fr-FR");
+  $("countLabel").textContent = "cartes dans le pool";
+  $("lockState").innerHTML = ms
+    ? `dernier set inclus : <b>${ms.name}</b> (${ms.code}) · ${ms.date}`
+    : `date de coupure : <b>${cutoff}</b>`;
+  $("frise").querySelectorAll(".set").forEach(b=>{
+    b.classList.toggle("in", b.dataset.d <= cutoff);
+    b.classList.toggle("cut", b.dataset.d === cutoff);
+  });
+  $("shown").textContent = `${view.length.toLocaleString("fr-FR")} carte(s) affichée(s) après filtres`;
+  $("grid").innerHTML=""; rendered=0; $("msg").textContent = view.length?"":"Aucune carte ne correspond.";
+  paint();
+}
+
+function paint(){
+  const slice = view.slice(rendered, rendered+60);
+  if(!slice.length) return;
+  $("grid").insertAdjacentHTML("beforeend", slice.map((c,i)=>{
+    const f=frameOf(c.type), col=`var(${FRAME[f]})`, img=c.card_images?.[0]?.image_url_small||"";
+    const stat = c.atk!=null ? `${c.atk}/${c.def??"?"} · niv ${c.level??"?"}` : c.race;
+    return `<button class="card" data-i="${rendered+i}">
+      <img class="art" loading="lazy" src="${img}" alt=""
+        onerror="this.outerHTML='<div class=ph style=background:${col}>${c.name.replace(/'/g,"&#39;")}</div>'">
+      <span class="meta"><span class="nm">${c.name}</span>
+      <span class="sub"><i class="swatch" style="background:${col}"></i>${stat}</span></span></button>`;
+  }).join(""));
+  rendered += slice.length;
+  $("grid").querySelectorAll(".card:not([data-w])").forEach(b=>{
+    b.dataset.w=1; b.onclick=()=>detail(view[+b.dataset.i]);
+  });
+}
+
+function detail(c){
+  const img=c.card_images?.[0]?.image_url||"";
+  const stat = c.atk!=null ? `${c.race} / ${c.attribute} · niveau ${c.level} · ${c.atk} ATK / ${c.def} DEF`
+    : `${c.type} · ${c.race}`;
+  $("dlgIn").innerHTML = `<img src="${img}" alt="" onerror="this.remove()">
+    <div><h3>${c.name}</h3><div class="line">${stat}<br>sortie TCG ${dateOf(c)||"?"}</div>
+    <div class="desc">${(c.desc||"").replace(/</g,"&lt;")}</div></div>`;
+  const p=(c.card_sets||[]).filter(s=>(SETS[s.set_name]||"9999")<=cutoff)
+    .sort((a,b)=>(SETS[a.set_name]||"").localeCompare(SETS[b.set_name]||""));
+  $("dlgPrints").innerHTML = p.length
+    ? "éditions d'époque<br>" + p.map(s=>`<div>${s.set_code} · ${s.set_name} · ${s.set_rarity}</div>`).join("")
+    : "aucune édition d'époque référencée";
+  $("dlg").showModal();
+}
+
+function exportCsv(){
+  const rows=[["nom","categorie","type","attribut","niveau","atk","def","sortie_tcg","texte"]];
+  view.forEach(c=>rows.push([c.name,klass(c.type),c.race||"",c.attribute||"",c.level??"",
+    c.atk??"",c.def??"",dateOf(c),(c.desc||"").replace(/\s+/g," ")]));
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv"}));
+  a.download=`pool-retro-${cutoff}.csv`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function greet(){
+  const app = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+  if(app || localStorage.getItem("tipSeen")) return;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  $("tipHow").textContent = ios
+    ? "Pour l'avoir comme une app : bouton Partager, puis « Sur l'écran d'accueil »."
+    : "Pour l'avoir comme une app : menu du navigateur, puis « Installer l'application ».";
+  $("tip").style.display = "block";
+  $("tipX").onclick = () => { localStorage.setItem("tipSeen","1"); $("tip").style.display="none"; };
+}
+
+function share(){
+  const url = location.href, b = $("share");
+  if(navigator.share){ navigator.share({title:"Pool retro", url}).catch(()=>{}); return; }
+  navigator.clipboard.writeText(url).then(()=>{
+    b.textContent = "Lien copié";
+    setTimeout(()=>b.textContent = "Partager le lien", 2000);
+  }).catch(()=>{ b.textContent = url; });
+}
+
+$("share").onclick = share;
+greet();
+boot();
+</script>
+</body>
+</html>

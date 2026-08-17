@@ -140,6 +140,8 @@
       <option value="name">nom</option><option value="date">date de sortie</option>
       <option value="atk">ATK décroissant</option><option value="def">DEF décroissant</option>
       <option value="lvl">niveau</option></select></div>
+    <div><label for="fLang">Langue</label><select id="fLang">
+      <option value="fr">français</option><option value="en">anglais</option></select></div>
   </div>
 
   <div class="bar">
@@ -189,6 +191,19 @@ const frameOf = t => t.includes("Spell")?"Spell":t.includes("Trap")?"Trap":
 const klass = t => t.includes("Spell")?"Magie":t.includes("Trap")?"Piège":"Monstre";
 const dateOf = c => (c.misc_info&&c.misc_info[0]&&c.misc_info[0].tcg_date)||"";
 
+let FR = {}, lang = localStorage.getItem("lang") || "fr";
+const nameOf = c => (lang==="fr" && FR[c.id] && FR[c.id][0]) || c.name;
+const descOf = c => (lang==="fr" && FR[c.id] && FR[c.id][1]) || c.desc || "";
+const RACES = {Aqua:"Aqua",Beast:"Bête","Beast-Warrior":"Bête-Guerrier","Creator-God":"Dieu Créateur",
+  Cyberse:"Cyberse",Dinosaur:"Dinosaure","Divine-Beast":"Bête Divine",Dragon:"Dragon",Fairy:"Elfe",
+  Fiend:"Démon",Fish:"Poisson",Insect:"Insecte",Machine:"Machine",Plant:"Plante",Psychic:"Psychique",
+  Pyro:"Pyro",Reptile:"Reptile",Rock:"Rocher","Sea Serpent":"Serpent de Mer",Spellcaster:"Magicien",
+  Thunder:"Tonnerre",Warrior:"Guerrier","Winged Beast":"Bête Ailée",Wyrm:"Wyrm",Zombie:"Zombie",
+  Normal:"Normale",Field:"Terrain",Equip:"Équipement",Continuous:"Continue","Quick-Play":"Jeu-Rapide",
+  Ritual:"Rituelle",Counter:"Contre"};
+const ATTRS = {DARK:"TÉNÈBRES",LIGHT:"LUMIÈRE",EARTH:"TERRE",WATER:"EAU",FIRE:"FEU",WIND:"VENT",DIVINE:"DIVIN"};
+const tr = (d,v) => lang==="fr" ? (d[v]||v) : v;
+
 const idb = {
   open:()=>new Promise((ok,no)=>{ const r=indexedDB.open("poolretro",1);
     r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>ok(r.result); r.onerror=()=>no(r.error); }),
@@ -198,10 +213,26 @@ const idb = {
     const t=db.transaction("kv","readwrite"); t.objectStore("kv").put(v,k); t.oncomplete=()=>ok(); t.onerror=()=>ok(); }); }
 };
 
-function install(cards,sets){
-  CARDS = cards; SETS = {};
+function install(cards,sets,fr){
+  CARDS = cards; SETS = {}; FR = fr || {};
   sets.forEach(s => SETS[s.set_name] = s.tcg_date || "");
   MS = MILESTONES.map(([code,name]) => ({code,name,date:SETS[name]||""})).filter(m=>m.date);
+}
+
+async function frenchNames(ids){
+  const url = `${API}/cardinfo.php?language=fr&startdate=1999-01-01&enddate=${HARD_END}&dateregion=tcg`;
+  let list = [];
+  try{
+    const r = await fetch(url).then(r=>r.json());
+    if(Array.isArray(r.data) && r.data.length > 500) list = r.data;
+  }catch(e){}
+  if(!list.length){
+    try{ list = (await fetch(`${API}/cardinfo.php?language=fr`).then(r=>r.json())).data || []; }
+    catch(e){ return {}; }
+  }
+  const map = {};
+  list.forEach(c => { if(ids.has(c.id)) map[c.id] = [c.name, c.desc]; });
+  return map;
 }
 
 async function download(){
@@ -209,28 +240,29 @@ async function download(){
     fetch(`${API}/cardinfo.php?startdate=1999-01-01&enddate=${HARD_END}&dateregion=tcg&misc=yes`).then(r=>r.json()),
     fetch(`${API}/cardsets.php`).then(r=>r.json())
   ]);
-  const slim = ci.data.map(c=>({name:c.name,type:c.type,race:c.race,attribute:c.attribute,
+  const slim = ci.data.map(c=>({id:c.id,name:c.name,type:c.type,race:c.race,attribute:c.attribute,
     level:c.level,atk:c.atk,def:c.def,desc:c.desc,card_sets:c.card_sets,
     card_images:[{image_url:c.card_images?.[0]?.image_url,image_url_small:c.card_images?.[0]?.image_url_small}],
     misc_info:[{tcg_date:c.misc_info?.[0]?.tcg_date}]}));
   const sets = cs.map(s=>({set_name:s.set_name,tcg_date:s.tcg_date}));
-  await idb.set("pool",{cards:slim,sets,saved:new Date().toISOString().slice(0,10)});
-  return {cards:slim,sets};
+  const fr = await frenchNames(new Set(slim.map(c=>c.id)));
+  await idb.set("pool2",{cards:slim,sets,fr,saved:new Date().toISOString().slice(0,10)});
+  return {cards:slim,sets,fr};
 }
 
 async function boot(){
   if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
   let cached = null;
-  try{ cached = await idb.get("pool"); }catch(e){}
+  try{ cached = await idb.get("pool2"); }catch(e){}
   if(cached){
-    install(cached.cards,cached.sets);
+    install(cached.cards,cached.sets,cached.fr);
     buildFrise(); buildOptions(); wire(); apply();
     $("msg").textContent = "";
     return;
   }
   try{
     const d = await download();
-    install(d.cards,d.sets);
+    install(d.cards,d.sets,d.fr);
     buildFrise(); buildOptions(); wire(); apply();
   }catch(e){
     $("msg").innerHTML = "Impossible de joindre la base YGOPRODeck. Reconnecte-toi et recharge : "
@@ -241,7 +273,8 @@ async function boot(){
 
 async function sync(){
   const b=$("sync"); b.textContent="Mise à jour…"; b.disabled=true;
-  try{ const d=await download(); install(d.cards,d.sets); buildFrise(); apply(); b.textContent="À jour"; }
+  try{ const d=await download(); install(d.cards,d.sets,d.fr); buildFrise(); buildOptions(); apply();
+    b.textContent="À jour"; }
   catch(e){ b.textContent="Échec — hors ligne"; }
   setTimeout(()=>{ b.textContent="Mettre à jour"; b.disabled=false; },2500);
 }
@@ -258,9 +291,15 @@ function buildOptions(){
   const attrs=new Set(), races=new Set(), lvls=new Set();
   CARDS.forEach(c=>{ if(c.attribute)attrs.add(c.attribute);
     if(c.race)races.add(c.race); if(c.level!=null)lvls.add(c.level); });
-  const fill=(el,vals)=>[...vals].sort((a,b)=>String(a).localeCompare(String(b),"fr",{numeric:1}))
-    .forEach(v=>el.insertAdjacentHTML("beforeend",`<option>${v}</option>`));
-  fill($("fAttr"),attrs); fill($("fRace"),races); fill($("fLvl"),lvls);
+  const fill=(el,vals,dict)=>{
+    const keep=el.value; el.length=1;
+    [...vals].map(v=>[v,dict?tr(dict,v):String(v)])
+      .sort((a,b)=>a[1].localeCompare(b[1],"fr",{numeric:1}))
+      .forEach(([v,lab])=>el.insertAdjacentHTML("beforeend",`<option value="${v}">${lab}</option>`));
+    el.value=keep;
+  };
+  fill($("fAttr"),attrs,ATTRS); fill($("fRace"),races,RACES); fill($("fLvl"),lvls,null);
+  $("fLang").value = lang;
 }
 
 function wire(){
@@ -271,6 +310,10 @@ function wire(){
     $("fSort").value="name"; apply(); };
   $("csv").onclick = exportCsv;
   $("sync").onclick = sync;
+  $("fLang").onchange = () => {
+    lang = $("fLang").value; localStorage.setItem("lang", lang);
+    buildOptions(); apply();
+  };
   new IntersectionObserver(es=>{ if(es[0].isIntersecting) paint(); })
     .observe($("sentinel"));
 }
@@ -282,12 +325,14 @@ function apply(){
   view = pool.filter(c =>
     (!kl || klass(c.type)===kl) && (!at || c.attribute===at) &&
     (!ra || c.race===ra) && (!lv || String(c.level)===lv) &&
-    (!q || c.name.toLowerCase().includes(q) || (c.desc||"").toLowerCase().includes(q)));
+    (!q || nameOf(c).toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
+        || descOf(c).toLowerCase().includes(q)));
+  const byName=(a,b)=>nameOf(a).localeCompare(nameOf(b),"fr");
   const cmp = {
-    name:(a,b)=>a.name.localeCompare(b.name,"fr"),
-    date:(a,b)=>dateOf(a).localeCompare(dateOf(b)) || a.name.localeCompare(b.name),
+    name:byName,
+    date:(a,b)=>dateOf(a).localeCompare(dateOf(b)) || byName(a,b),
     atk:(a,b)=>(b.atk??-1)-(a.atk??-1), def:(a,b)=>(b.def??-1)-(a.def??-1),
-    lvl:(a,b)=>(a.level??99)-(b.level??99) || a.name.localeCompare(b.name)};
+    lvl:(a,b)=>(a.level??99)-(b.level??99) || byName(a,b)};
   view.sort(cmp[so]);
 
   const ms = MS.find(m=>m.date===cutoff);
@@ -310,11 +355,12 @@ function paint(){
   if(!slice.length) return;
   $("grid").insertAdjacentHTML("beforeend", slice.map((c,i)=>{
     const f=frameOf(c.type), col=`var(${FRAME[f]})`, img=c.card_images?.[0]?.image_url_small||"";
-    const stat = c.atk!=null ? `${c.atk}/${c.def??"?"} · niv ${c.level??"?"}` : c.race;
+    const stat = c.atk!=null ? `${c.atk}/${c.def??"?"} · niv ${c.level??"?"}` : tr(RACES,c.race);
+    const nm = nameOf(c);
     return `<button class="card" data-i="${rendered+i}">
       <img class="art" loading="lazy" src="${img}" alt=""
-        onerror="this.outerHTML='<div class=ph style=background:${col}>${c.name.replace(/'/g,"&#39;")}</div>'">
-      <span class="meta"><span class="nm">${c.name}</span>
+        onerror="this.outerHTML='<div class=ph style=background:${col}>${nm.replace(/'/g,"&#39;")}</div>'">
+      <span class="meta"><span class="nm">${nm}</span>
       <span class="sub"><i class="swatch" style="background:${col}"></i>${stat}</span></span></button>`;
   }).join(""));
   rendered += slice.length;
@@ -325,11 +371,14 @@ function paint(){
 
 function detail(c){
   const img=c.card_images?.[0]?.image_url||"";
-  const stat = c.atk!=null ? `${c.race} / ${c.attribute} · niveau ${c.level} · ${c.atk} ATK / ${c.def} DEF`
-    : `${c.type} · ${c.race}`;
+  const stat = c.atk!=null
+    ? `${tr(RACES,c.race)} / ${tr(ATTRS,c.attribute)} · niveau ${c.level} · ${c.atk} ATK / ${c.def} DEF`
+    : `${klass(c.type)} ${tr(RACES,c.race)}`;
+  const nm = nameOf(c), alt = nm !== c.name ? `<br>${c.name}` : "";
+  const missing = lang==="fr" && !FR[c.id] ? " · pas de traduction disponible" : "";
   $("dlgIn").innerHTML = `<img src="${img}" alt="" onerror="this.remove()">
-    <div><h3>${c.name}</h3><div class="line">${stat}<br>sortie TCG ${dateOf(c)||"?"}</div>
-    <div class="desc">${(c.desc||"").replace(/</g,"&lt;")}</div></div>`;
+    <div><h3>${nm}</h3><div class="line">${stat}<br>sortie TCG ${dateOf(c)||"?"}${missing}${alt}</div>
+    <div class="desc">${descOf(c).replace(/</g,"&lt;")}</div></div>`;
   const p=(c.card_sets||[]).filter(s=>(SETS[s.set_name]||"9999")<=cutoff)
     .sort((a,b)=>(SETS[a.set_name]||"").localeCompare(SETS[b.set_name]||""));
   $("dlgPrints").innerHTML = p.length
@@ -339,9 +388,10 @@ function detail(c){
 }
 
 function exportCsv(){
-  const rows=[["nom","categorie","type","attribut","niveau","atk","def","sortie_tcg","texte"]];
-  view.forEach(c=>rows.push([c.name,klass(c.type),c.race||"",c.attribute||"",c.level??"",
-    c.atk??"",c.def??"",dateOf(c),(c.desc||"").replace(/\s+/g," ")]));
+  const rows=[["nom","nom_en","categorie","type","attribut","niveau","atk","def","sortie_tcg","texte"]];
+  view.forEach(c=>rows.push([nameOf(c),c.name,klass(c.type),tr(RACES,c.race)||"",
+    tr(ATTRS,c.attribute)||"",c.level??"",c.atk??"",c.def??"",dateOf(c),
+    descOf(c).replace(/\s+/g," ")]));
   const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv"}));

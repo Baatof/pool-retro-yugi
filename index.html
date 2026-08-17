@@ -462,7 +462,7 @@ function greet(){
 
 function share(){
   const url = location.href, b = $("share");
-  if(navigator.share){ navigator.share({title:"Pool retro", url}).catch(()=>{}); return; }
+  if(navigator.share){ navigator.share({title:"Yugi Merguez Party", url}).catch(()=>{}); return; }
   navigator.clipboard.writeText(url).then(()=>{
     b.textContent = "Lien copié";
     setTimeout(()=>b.textContent = "Partager le lien", 2000);

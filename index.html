@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Pool retro</title>
+<title>Yugi Merguez Party</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Pool retro">
+<meta name="apple-mobile-web-app-title" content="Yugi Merguez Party">
 <meta name="theme-color" content="#12100e">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -188,7 +188,7 @@
 </head>
 <body>
 <header>
-  <h1>Pool retro<small>Cartes Yu-Gi-Oh! TCG · ère GX et avant</small></h1>
+  <h1>Yugi Merguez Party<small>Cartes Yu-Gi-Oh! TCG · ère GX et avant</small></h1>
   <div class="count" id="count">—<span id="countLabel">chargement</span></div>
 </header>
 
@@ -601,7 +601,7 @@ function greet(){
 
 function share(){
   const url = location.href, b = $("share");
-  if(navigator.share){ navigator.share({title:"Pool retro", url}).catch(()=>{}); return; }
+  if(navigator.share){ navigator.share({title:"Yugi Merguez Party", url}).catch(()=>{}); return; }
   navigator.clipboard.writeText(url).then(()=>{
     b.textContent = "Lien copié";
     setTimeout(()=>b.textContent = "Partager le lien", 2000);

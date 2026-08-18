@@ -63,6 +63,9 @@
   .set.in em{color:var(--fg-dim)} .set.cut em{color:var(--monster)}
   .lock-state{font-family:IBM Plex Mono,monospace;font-size:13px;color:var(--fg-dim);margin-top:4px}
   .lock-state b{color:var(--fg);font-weight:500}
+  .lock-date{display:flex;align-items:center;gap:10px;margin-top:12px}
+  .lock-date label{margin:0;flex:0 0 auto}
+  .lock-date input{width:auto;flex:0 0 auto}
 
   .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;
     padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin:18px 0}
@@ -221,6 +224,10 @@
     </div>
     <div class="frise" id="frise"></div>
     <div class="lock-state" id="lockState"></div>
+    <div class="lock-date">
+      <label for="cutDate">ou une date précise</label>
+      <input type="date" id="cutDate" min="2002-01-01" max="2009-12-31">
+    </div>
   </section>
 
   <div class="tools">
@@ -300,7 +307,7 @@
 </dialog>
 
 <script>
-const BUILD = "10-zones";
+const BUILD = "12-sans-synchro";
 // Liste Interdites & Limitées du TCG, 1er septembre 2008 (0 interdite, 1 limitée, 2 semi-limitée)
 const BAN = {};
 `Black Luster Soldier - Envoy of the Beginning|Chaos Emperor Dragon - Envoy of the End|Chaos Sorcerer|Cyber Jar|Cyber-Stein|Dark Magician of Chaos|Destiny HERO - Disk Commander|Fiber Jar|Magical Scientist|Magician of Faith|Makyura the Destructor|Sinister Serpent|Thousand-Eyes Restrict|Tribe-Infecting Virus|Tsukuyomi|Victory Dragon|Witch of the Black Forest|Yata-Garasu|Butterfly Dagger - Elma|Change of Heart|Confiscation|Dark Hole|Delinquent Duo|Dimension Fusion|Graceful Charity|Harpie's Feather Duster|Last Will|Metamorphosis|Mirage of Nightmare|Painful Choice|Pot of Greed|Premature Burial|Raigeki|Snatch Steal|The Forceful Sentry|Call of the Haunted|Exchange of the Spirit|Imperial Order|Last Turn|Ring of Destruction|Time Seal`
@@ -320,7 +327,7 @@ const maxOf = c => {                                  // exemplaires réellement
 };
 
 const API = "https://db.ygoprodeck.com/api/v7";
-const HARD_END = "2008-12-31";
+const HARD_END = "2009-12-31";
 const MILESTONES = [
   ["LOB","Legend of Blue Eyes White Dragon"],["MRD","Metal Raiders"],["SRL","Spell Ruler"],
   ["PSV","Pharaoh's Servant"],["LON","Labyrinth of Nightmare"],["LOD","Legacy of Darkness"],
@@ -342,7 +349,8 @@ const frameOf = t => t.includes("Spell")?"Spell":t.includes("Trap")?"Trap":
   t.includes("Ritual")?"Ritual":t.includes("Fusion")?"Fusion":t.includes("Synchro")?"Synchro":
   t.includes("Normal")?"Normal":"Effect";
 const klass = t => t.includes("Spell")?"Magie":t.includes("Trap")?"Piège":"Monstre";
-const dateOf = c => (c.misc_info&&c.misc_info[0]&&c.misc_info[0].tcg_date)||"";
+const rawDate = c => (c.misc_info&&c.misc_info[0]&&c.misc_info[0].tcg_date)||"";
+const dateOf = c => c.d || rawDate(c);   // c.d : calculée à l'installation
 
 let FR = {}, lang = localStorage.getItem("lang") || "fr";
 const nameOf = c => (lang==="fr" && FR[c.id] && FR[c.id][0]) || c.name;
@@ -367,8 +375,19 @@ const idb = {
 };
 
 function install(cards,sets,fr){
-  CARDS = cards; SETS = {}; FR = fr || {};
+  // format sans Synchro : elles sont écartées du pool, de la recherche et des decks
+  CARDS = cards.filter(c => !/Synchro/.test(c.type));
+  SETS = {}; FR = fr || {};
   sets.forEach(s => SETS[s.set_name] = s.tcg_date || "");
+  // une carte entre dans le pool à sa plus ancienne impression, promo ou manga inclus
+  CARDS.forEach(c => {
+    let d = rawDate(c);
+    (c.card_sets || []).forEach(x => {
+      const sd = SETS[x.set_name];
+      if(sd && (!d || sd < d)) d = sd;
+    });
+    c.d = d;
+  });
   MS = MILESTONES.map(([code,name]) => ({code,name,date:SETS[name]||""})).filter(m=>m.date);
 }
 
@@ -399,7 +418,7 @@ async function download(){
     misc_info:[{tcg_date:c.misc_info?.[0]?.tcg_date}]}));
   const sets = cs.map(s=>({set_name:s.set_name,tcg_date:s.tcg_date}));
   const fr = await frenchNames(new Set(slim.map(c=>c.id)));
-  await idb.set("pool2",{cards:slim,sets,fr,saved:new Date().toISOString().slice(0,10)});
+  await idb.set("pool3",{cards:slim,sets,fr,saved:new Date().toISOString().slice(0,10)});
   return {cards:slim,sets,fr};
 }
 
@@ -413,7 +432,7 @@ async function boot(){
   }
   $("build").textContent = "version " + BUILD;
   let cached = null;
-  try{ cached = await idb.get("pool2"); }catch(e){}
+  try{ cached = await idb.get("pool3"); }catch(e){}
   if(cached){
     install(cached.cards,cached.sets,cached.fr);
     await loadDecks();
@@ -447,6 +466,9 @@ function buildFrise(){
       <b></b><em>${m.code}</em></button>`).join("");
   $("frise").querySelectorAll(".set").forEach(b =>
     b.onclick = () => { cutoff = b.dataset.d; apply(); });
+  const cd = $("cutDate");
+  cd.value = cutoff;
+  cd.onchange = () => { if(cd.value){ cutoff = cd.value; apply(); } };
 }
 
 function buildOptions(){
@@ -512,9 +534,10 @@ function apply(){
   const ms = MS.find(m=>m.date===cutoff);
   $("count").firstChild.textContent = pool.length.toLocaleString("fr-FR");
   $("countLabel").textContent = "cartes dans le pool";
-  $("lockState").innerHTML = ms
+  $("lockState").innerHTML = (ms
     ? `dernier set inclus : <b>${ms.name}</b> (${ms.code}) · ${ms.date}`
-    : `date de coupure : <b>${cutoff}</b>`;
+    : `date de coupure : <b>${cutoff}</b>`) + ` · <span style="color:var(--fg-faint)">sans Synchro</span>`;
+  if($("cutDate").value !== cutoff) $("cutDate").value = cutoff;
   $("frise").querySelectorAll(".set").forEach(b=>{
     b.classList.toggle("in", b.dataset.d <= cutoff);
     b.classList.toggle("cut", b.dataset.d === cutoff);
@@ -621,7 +644,7 @@ function share(){
 let DECKS = [], curId = null, BYNAME = {}, saveT = null;
 
 const deck = () => DECKS.find(d => d.id === curId);
-const isExtra = c => /Fusion|Synchro/.test(c.type);
+const isExtra = c => /Fusion/.test(c.type);
 const sum = o => Object.values(o||{}).reduce((a,b)=>a+b,0);
 // répartition réelle : l'Extra Deck est déduit du type de carte, le Side est choisi
 function counts(d){

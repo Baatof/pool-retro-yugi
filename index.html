@@ -66,6 +66,10 @@
   .lock-date{display:flex;align-items:center;gap:10px;margin-top:12px}
   .lock-date label{margin:0;flex:0 0 auto}
   .lock-date input{width:auto;flex:0 0 auto}
+  .lock-opt{display:block;margin:12px 0 0;font-size:13px;letter-spacing:0;text-transform:none;
+    color:var(--fg-dim);cursor:pointer}
+  .lock-opt input{width:auto;margin-right:8px;vertical-align:-2px}
+  .lock-opt span{display:block;margin:2px 0 0 26px;font-size:12px;color:var(--fg-faint)}
 
   .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;
     padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin:18px 0}
@@ -228,6 +232,9 @@
       <label for="cutDate">ou une date précise</label>
       <input type="date" id="cutDate" min="2002-01-01" max="2009-12-31">
     </div>
+    <label class="lock-opt"><input type="checkbox" id="incBan">
+      Inclure les cartes de la banlist de septembre 2008 sorties après le verrou
+      <span>Gorz, Dandylion… jouables à l'époque via une promo ou une réédition tardive</span></label>
   </section>
 
   <div class="tools">
@@ -307,7 +314,7 @@
 </dialog>
 
 <script>
-const BUILD = "12-sans-synchro";
+const BUILD = "13-gorz";
 // Liste Interdites & Limitées du TCG, 1er septembre 2008 (0 interdite, 1 limitée, 2 semi-limitée)
 const BAN = {};
 `Black Luster Soldier - Envoy of the Beginning|Chaos Emperor Dragon - Envoy of the End|Chaos Sorcerer|Cyber Jar|Cyber-Stein|Dark Magician of Chaos|Destiny HERO - Disk Commander|Fiber Jar|Magical Scientist|Magician of Faith|Makyura the Destructor|Sinister Serpent|Thousand-Eyes Restrict|Tribe-Infecting Virus|Tsukuyomi|Victory Dragon|Witch of the Black Forest|Yata-Garasu|Butterfly Dagger - Elma|Change of Heart|Confiscation|Dark Hole|Delinquent Duo|Dimension Fusion|Graceful Charity|Harpie's Feather Duster|Last Will|Metamorphosis|Mirage of Nightmare|Painful Choice|Pot of Greed|Premature Burial|Raigeki|Snatch Steal|The Forceful Sentry|Call of the Haunted|Exchange of the Spirit|Imperial Order|Last Turn|Ring of Destruction|Time Seal`
@@ -317,6 +324,15 @@ const BAN = {};
 `Dark Armed Dragon|Judgment Dragon|Manticore of Darkness|Mask of Darkness|Necroface|Phantom of Chaos|Rescue Cat|Book of Moon|Card of Safe Return|Chain Strike|Foolish Burial|Magical Stone Excavation|Nobleman of Crossout`
   .split("|").forEach(n => BAN[n] = 2);
 const STATUS = ["Interdite","Limitée","Semi-limitée"];
+// une carte est dans le pool si sa plus ancienne impression précède le verrou,
+// ou si elle figure sur la liste de septembre 2008 et que l'option est active
+const inPool = c => {
+  const d = dateOf(c);
+  if(d && d <= cutoff) return true;
+  return incBan && statusOf(c) !== undefined;
+};
+const lateBan = c => incBan && statusOf(c) !== undefined && (!dateOf(c) || dateOf(c) > cutoff);
+
 let mode = localStorage.getItem("ban") || "house";   // "official" ou "house"
 const statusOf = c => BAN[c.name];                    // statut officiel de septembre 2008
 const maxOf = c => {                                  // exemplaires réellement autorisés
@@ -349,6 +365,7 @@ const frameOf = t => t.includes("Spell")?"Spell":t.includes("Trap")?"Trap":
   t.includes("Ritual")?"Ritual":t.includes("Fusion")?"Fusion":t.includes("Synchro")?"Synchro":
   t.includes("Normal")?"Normal":"Effect";
 const klass = t => t.includes("Spell")?"Magie":t.includes("Trap")?"Piège":"Monstre";
+let incBan = localStorage.getItem("incban") !== "0";   // cartes de la banlist toujours jouables
 const rawDate = c => (c.misc_info&&c.misc_info[0]&&c.misc_info[0].tcg_date)||"";
 const dateOf = c => c.d || rawDate(c);   // c.d : calculée à l'installation
 
@@ -466,6 +483,10 @@ function buildFrise(){
       <b></b><em>${m.code}</em></button>`).join("");
   $("frise").querySelectorAll(".set").forEach(b =>
     b.onclick = () => { cutoff = b.dataset.d; apply(); });
+  const ib = $("incBan");
+  ib.checked = incBan;
+  ib.onchange = () => { incBan = ib.checked; localStorage.setItem("incban", incBan ? "1" : "0");
+    apply(); renderDeck(); };
   const cd = $("cutDate");
   cd.value = cutoff;
   cd.onchange = () => { if(cd.value){ cutoff = cd.value; apply(); } };
@@ -513,7 +534,7 @@ function wire(){
 }
 
 function apply(){
-  const pool = CARDS.filter(c => { const d=dateOf(c); return d && d <= cutoff; });
+  const pool = CARDS.filter(inPool);
   const q=$("q").value.trim().toLowerCase(), kl=$("fClass").value,
     at=$("fAttr").value, ra=$("fRace").value, lv=$("fLvl").value, so=$("fSort").value,
     st=$("fStat").value;
@@ -585,7 +606,8 @@ function detail(c){
     ? `${tr(RACES,c.race)} / ${tr(ATTRS,c.attribute)} · niveau ${c.level} · ${c.atk} ATK / ${c.def} DEF`
     : `${klass(c.type)} ${tr(RACES,c.race)}`;
   const nm = nameOf(c), alt = nm !== c.name ? `<br>${c.name}` : "";
-  const missing = lang==="fr" && !FR[c.id] ? " · pas de traduction disponible" : "";
+  const missing = (lang==="fr" && !FR[c.id] ? " · pas de traduction disponible" : "")
+    + (lateBan(c) ? ` · hors pool mais présente sur la liste de septembre 2008` : "");
   const stx = statusOf(c);
   const mx = maxOf(c);
   const ban = stx===undefined ? "" :
@@ -678,8 +700,8 @@ function addCard(name, delta, zone){
   const have = store[name] || 0;
   if(delta > 0){
     if(!c) return nope(`${name} est introuvable dans la base.`);
-    if((dateOf(c) || "9999") > cutoff)
-      return nope(`${nameOf(c)} sort après ${cutoff}, elle est hors du pool verrouillé.`);
+    if(!inPool(c))
+      return nope(`${nameOf(c)} sort après ${cutoff} (${dateOf(c)||"date inconnue"}), elle est hors du pool verrouillé.`);
     const mx = maxOf(c);
     if(mx === 0)
       return nope(`${nameOf(c)} est interdite par la liste de septembre 2008. Passe en format maison si vous l'autorisez.`);

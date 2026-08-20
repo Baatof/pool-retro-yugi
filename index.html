@@ -314,7 +314,7 @@
 </dialog>
 
 <script>
-const BUILD = "13-gorz";
+const BUILD = "14-recherche";
 // Liste Interdites & Limitées du TCG, 1er septembre 2008 (0 interdite, 1 limitée, 2 semi-limitée)
 const BAN = {};
 `Black Luster Soldier - Envoy of the Beginning|Chaos Emperor Dragon - Envoy of the End|Chaos Sorcerer|Cyber Jar|Cyber-Stein|Dark Magician of Chaos|Destiny HERO - Disk Commander|Fiber Jar|Magical Scientist|Magician of Faith|Makyura the Destructor|Sinister Serpent|Thousand-Eyes Restrict|Tribe-Infecting Virus|Tsukuyomi|Victory Dragon|Witch of the Black Forest|Yata-Garasu|Butterfly Dagger - Elma|Change of Heart|Confiscation|Dark Hole|Delinquent Duo|Dimension Fusion|Graceful Charity|Harpie's Feather Duster|Last Will|Metamorphosis|Mirage of Nightmare|Painful Choice|Pot of Greed|Premature Burial|Raigeki|Snatch Steal|The Forceful Sentry|Call of the Haunted|Exchange of the Spirit|Imperial Order|Last Turn|Ring of Destruction|Time Seal`
@@ -381,6 +381,7 @@ const RACES = {Aqua:"Aqua",Beast:"Bête","Beast-Warrior":"Bête-Guerrier","Creat
   Ritual:"Rituelle",Counter:"Contre"};
 const ATTRS = {DARK:"TÉNÈBRES",LIGHT:"LUMIÈRE",EARTH:"TERRE",WATER:"EAU",FIRE:"FEU",WIND:"VENT",DIVINE:"DIVIN"};
 const tr = (d,v) => lang==="fr" ? (d[v]||v) : v;
+const norm = t => (t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 
 const idb = {
   open:()=>new Promise((ok,no)=>{ const r=indexedDB.open("poolretro",1);
@@ -398,6 +399,8 @@ function install(cards,sets,fr){
   sets.forEach(s => SETS[s.set_name] = s.tcg_date || "");
   // une carte entre dans le pool à sa plus ancienne impression, promo ou manga inclus
   CARDS.forEach(c => {
+    const f = FR[c.id] || [];
+    c.hay = norm([c.name, c.desc, f[0], f[1]].filter(Boolean).join(" "));
     let d = rawDate(c);
     (c.card_sets || []).forEach(x => {
       const sd = SETS[x.set_name];
@@ -535,15 +538,14 @@ function wire(){
 
 function apply(){
   const pool = CARDS.filter(inPool);
-  const q=$("q").value.trim().toLowerCase(), kl=$("fClass").value,
+  const q=norm($("q").value.trim()), kl=$("fClass").value,
     at=$("fAttr").value, ra=$("fRace").value, lv=$("fLvl").value, so=$("fSort").value,
     st=$("fStat").value;
   view = pool.filter(c =>
     (!kl || klass(c.type)===kl) && (!at || c.attribute===at) &&
     (!ra || c.race===ra) && (!lv || String(c.level)===lv) &&
     (!st || (st==="free" ? statusOf(c)===undefined : String(statusOf(c))===st)) &&
-    (!q || nameOf(c).toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
-        || descOf(c).toLowerCase().includes(q)));
+    (!q || (c.hay || norm(c.name+" "+c.desc)).includes(q)));
   const byName=(a,b)=>nameOf(a).localeCompare(nameOf(b),"fr");
   const cmp = {
     name:byName,
@@ -568,7 +570,11 @@ function apply(){
     ? ` · <span style="color:var(--effect)">format maison : interdites jouables à 1</span>` : "";
   $("toggleF").textContent = active ? `Filtres (${active})` : "Filtres";
   $("shown").textContent = `${view.length.toLocaleString("fr-FR")} carte(s) affichée(s)`;
-  $("grid").innerHTML=""; rendered=0; $("msg").textContent = view.length?"":"Aucune carte ne correspond.";
+  $("grid").innerHTML=""; rendered=0;
+  $("msg").innerHTML = view.length ? "" : (q
+    ? `Aucune carte ne correspond à « ${$("q").value.trim()} ».<br>` +
+      `Certaines cartes anciennes n'ont pas de traduction française : essaie le nom anglais.`
+    : "Aucune carte ne correspond.");
   paint();
 }
 

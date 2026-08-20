@@ -69,6 +69,9 @@
   .lock-opt{display:block;margin:12px 0 0;font-size:13px;letter-spacing:0;text-transform:none;
     color:var(--fg-dim);cursor:pointer}
   .lock-opt input{width:auto;margin-right:8px;vertical-align:-2px}
+  .zone{margin:0 0 14px} .zone select{width:auto;max-width:100%}
+  .presets{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 0}
+  .presets .btn{width:auto;font-size:13px;padding:7px 10px}
   .lock-opt span{display:block;margin:2px 0 0 26px;font-size:12px;color:var(--fg-faint)}
 
   .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;
@@ -223,10 +226,21 @@
 
   <section class="lock">
     <div class="lock-head">
-      <h2>Verrouiller la date</h2>
+      <h2 id="lock-h">Verrouiller la date</h2>
       <p>Clique un booster : tout ce qui sort après disparaît du pool.</p>
     </div>
+    <div class="zone">
+      <select id="fRegion" aria-label="Zone de sortie">
+        <option value="ocg">pool japonais (OCG)</option>
+        <option value="tcg">pool occidental (TCG)</option>
+      </select>
+    </div>
     <div class="frise" id="frise"></div>
+    <div class="presets" id="presets">
+      <button class="btn" data-d="2004-12-31">fin de Duel Monsters · 2004</button>
+      <button class="btn" data-d="2008-04-18">fin de GX, avant les Synchro · avril 2008</button>
+      <button class="btn" data-d="2008-12-31">fin 2008</button>
+    </div>
     <div class="lock-state" id="lockState"></div>
     <div class="lock-date">
       <label for="cutDate">ou une date précise</label>
@@ -314,7 +328,7 @@
 </dialog>
 
 <script>
-const BUILD = "14-recherche";
+const BUILD = "15-ocg";
 // Liste Interdites & Limitées du TCG, 1er septembre 2008 (0 interdite, 1 limitée, 2 semi-limitée)
 const BAN = {};
 `Black Luster Soldier - Envoy of the Beginning|Chaos Emperor Dragon - Envoy of the End|Chaos Sorcerer|Cyber Jar|Cyber-Stein|Dark Magician of Chaos|Destiny HERO - Disk Commander|Fiber Jar|Magical Scientist|Magician of Faith|Makyura the Destructor|Sinister Serpent|Thousand-Eyes Restrict|Tribe-Infecting Virus|Tsukuyomi|Victory Dragon|Witch of the Black Forest|Yata-Garasu|Butterfly Dagger - Elma|Change of Heart|Confiscation|Dark Hole|Delinquent Duo|Dimension Fusion|Graceful Charity|Harpie's Feather Duster|Last Will|Metamorphosis|Mirage of Nightmare|Painful Choice|Pot of Greed|Premature Burial|Raigeki|Snatch Steal|The Forceful Sentry|Call of the Haunted|Exchange of the Spirit|Imperial Order|Last Turn|Ring of Destruction|Time Seal`
@@ -365,9 +379,11 @@ const frameOf = t => t.includes("Spell")?"Spell":t.includes("Trap")?"Trap":
   t.includes("Ritual")?"Ritual":t.includes("Fusion")?"Fusion":t.includes("Synchro")?"Synchro":
   t.includes("Normal")?"Normal":"Effect";
 const klass = t => t.includes("Spell")?"Magie":t.includes("Trap")?"Piège":"Monstre";
+let region = localStorage.getItem("region") || "ocg";   // "ocg" (Japon) ou "tcg" (Occident)
 let incBan = localStorage.getItem("incban") !== "0";   // cartes de la banlist toujours jouables
 const rawDate = c => (c.misc_info&&c.misc_info[0]&&c.misc_info[0].tcg_date)||"";
-const dateOf = c => c.d || rawDate(c);   // c.d : calculée à l'installation
+const rawOcg  = c => (c.misc_info&&c.misc_info[0]&&c.misc_info[0].ocg_date)||"";
+const dateOf = c => region === "ocg" ? (c.do || "") : (c.dt || rawDate(c));
 
 let FR = {}, lang = localStorage.getItem("lang") || "fr";
 const nameOf = c => (lang==="fr" && FR[c.id] && FR[c.id][0]) || c.name;
@@ -402,11 +418,12 @@ function install(cards,sets,fr){
     const f = FR[c.id] || [];
     c.hay = norm([c.name, c.desc, f[0], f[1]].filter(Boolean).join(" "));
     let d = rawDate(c);
-    (c.card_sets || []).forEach(x => {
+    (c.card_sets || []).forEach(x => {          // les éditions connues sont occidentales
       const sd = SETS[x.set_name];
       if(sd && (!d || sd < d)) d = sd;
     });
-    c.d = d;
+    c.dt = d;
+    c.do = rawOcg(c);
   });
   MS = MILESTONES.map(([code,name]) => ({code,name,date:SETS[name]||""})).filter(m=>m.date);
 }
@@ -428,17 +445,21 @@ async function frenchNames(ids){
 }
 
 async function download(){
-  const [ci,cs] = await Promise.all([
-    fetch(`${API}/cardinfo.php?startdate=1999-01-01&enddate=${HARD_END}&dateregion=tcg&misc=yes`).then(r=>r.json()),
-    fetch(`${API}/cardsets.php`).then(r=>r.json())
+  const zone = r => fetch(`${API}/cardinfo.php?startdate=1998-01-01&enddate=${HARD_END}` +
+    `&dateregion=${r}&misc=yes`).then(x=>x.json()).then(x=>x.data||[]).catch(()=>[]);
+  const [tcg, ocg, cs] = await Promise.all([
+    zone("tcg"), zone("ocg"), fetch(`${API}/cardsets.php`).then(r=>r.json())
   ]);
-  const slim = ci.data.map(c=>({id:c.id,name:c.name,type:c.type,race:c.race,attribute:c.attribute,
+  // union des deux zones : une carte japonaise jamais sortie en Occident doit exister ici
+  const seen = new Set(), all = [];
+  [...tcg, ...ocg].forEach(c => { if(!seen.has(c.id)){ seen.add(c.id); all.push(c); } });
+  const slim = all.map(c=>({id:c.id,name:c.name,type:c.type,race:c.race,attribute:c.attribute,
     level:c.level,atk:c.atk,def:c.def,desc:c.desc,card_sets:c.card_sets,
     card_images:[{image_url:c.card_images?.[0]?.image_url,image_url_small:c.card_images?.[0]?.image_url_small}],
-    misc_info:[{tcg_date:c.misc_info?.[0]?.tcg_date}]}));
+    misc_info:[{tcg_date:c.misc_info?.[0]?.tcg_date, ocg_date:c.misc_info?.[0]?.ocg_date}]}));
   const sets = cs.map(s=>({set_name:s.set_name,tcg_date:s.tcg_date}));
   const fr = await frenchNames(new Set(slim.map(c=>c.id)));
-  await idb.set("pool3",{cards:slim,sets,fr,saved:new Date().toISOString().slice(0,10)});
+  await idb.set("pool5",{cards:slim,sets,fr,saved:new Date().toISOString().slice(0,10)});
   return {cards:slim,sets,fr};
 }
 
@@ -452,7 +473,7 @@ async function boot(){
   }
   $("build").textContent = "version " + BUILD;
   let cached = null;
-  try{ cached = await idb.get("pool3"); }catch(e){}
+  try{ cached = await idb.get("pool5"); }catch(e){}
   if(cached){
     install(cached.cards,cached.sets,cached.fr);
     await loadDecks();
@@ -486,6 +507,15 @@ function buildFrise(){
       <b></b><em>${m.code}</em></button>`).join("");
   $("frise").querySelectorAll(".set").forEach(b =>
     b.onclick = () => { cutoff = b.dataset.d; apply(); });
+  const rg = $("fRegion");
+  rg.value = region;
+  rg.onchange = () => {
+    region = rg.value; localStorage.setItem("region", region);
+    zoneUI(); apply(); renderDeck();
+  };
+  $("presets").querySelectorAll("button[data-d]").forEach(b =>
+    b.onclick = () => { cutoff = b.dataset.d; apply(); });
+  zoneUI();
   const ib = $("incBan");
   ib.checked = incBan;
   ib.onchange = () => { incBan = ib.checked; localStorage.setItem("incban", incBan ? "1" : "0");
@@ -493,6 +523,14 @@ function buildFrise(){
   const cd = $("cutDate");
   cd.value = cutoff;
   cd.onchange = () => { if(cd.value){ cutoff = cd.value; apply(); } };
+}
+
+// la frise repose sur les dates de sortie occidentales : sans objet pour le pool japonais
+function zoneUI(){
+  const ocg = region === "ocg";
+  $("frise").hidden = ocg;
+  $("presets").hidden = !ocg;
+  $("lock-h").textContent = ocg ? "Verrouiller la date (sorties japonaises)" : "Verrouiller la date";
 }
 
 function buildOptions(){
@@ -559,7 +597,8 @@ function apply(){
   $("countLabel").textContent = "cartes dans le pool";
   $("lockState").innerHTML = (ms
     ? `dernier set inclus : <b>${ms.name}</b> (${ms.code}) · ${ms.date}`
-    : `date de coupure : <b>${cutoff}</b>`) + ` · <span style="color:var(--fg-faint)">sans Synchro</span>`;
+    : `date de coupure : <b>${cutoff}</b>`) +
+    ` · <span style="color:var(--fg-faint)">${region==="ocg"?"sorties japonaises":"sorties occidentales"}, sans Synchro</span>`;
   if($("cutDate").value !== cutoff) $("cutDate").value = cutoff;
   $("frise").querySelectorAll(".set").forEach(b=>{
     b.classList.toggle("in", b.dataset.d <= cutoff);
